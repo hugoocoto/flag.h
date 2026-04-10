@@ -275,14 +275,13 @@ flag_parse(int *argc, char ***argv)
                                         fprintf(stderr, "Flag error: Unsupported nargs > 1\n");
                                         return 1;
                                 }
-                                if (*argc <= i + 1) {
-                                        fprintf(stderr, "Flag error: OOB when reading value for `%s`\n", fopt->abbr ?: fopt->opt);
-                                        return 1;
-                                }
                                 if ((o && (*argv)[i][strlen(fopt->opt)] == '=') ||
                                     (a && (*argv)[i][strlen(fopt->abbr)] == '=')) {
                                         *fopt->var = strdup(strchr((*argv)[i], '=') + 1);
                                         fopt->_need_free = 1;
+                                } else if (*argc <= i + 1) {
+                                        fprintf(stderr, "Flag error: OOB when reading value for `%s`\n", fopt->abbr ?: fopt->opt);
+                                        return 1;
                                 } else {
                                         ++i;
                                         *fopt->var = strdup((*argv)[i]);
