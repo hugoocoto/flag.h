@@ -43,9 +43,6 @@
  * This library api uses optional-like function params. You have to specify it
  * as a struct field (.name=value,).
  *
- * You have to increment by hand the number of flags supported, to avoid
- * reallocations. This is not optimal, i know, but it works fine.
- *
  * Check the example.
  */
 
@@ -122,7 +119,8 @@ extern "C" {
 
 #define flag_list(x, ...) (const char *[]){ x, ##__VA_ARGS__, 0 }
 
-#define MAX_FLAG_COUNT 5
+/* Flag list grows by this amount each time it runs out of space. */
+#define FLAG_LIST_GROWTH 3
 
 struct flag_opts {
         const char *opt;        // Flag (--help)
@@ -144,23 +142,42 @@ static struct program_opts {
 
 static struct {
         int count;
-        struct flag_opts flags[MAX_FLAG_COUNT];
-} flag_flags = {
-        .count = 1,
-        .flags = { (struct flag_opts) {
-        .opt = "--help",
-        .abbr = "-h",
-        .help = "Show this help",
-        } }
-};
+        int capacity;
+        struct flag_opts *flags;
+} flag_flags = { 0 };
 
 #define flag_add(var, ...) __flag_add(var, (struct flag_opts) { __VA_ARGS__ })
 #define flag_program(...) __flag_program((struct program_opts) { __VA_ARGS__ })
 
 static void
+__flag_list_append(struct flag_opts opts)
+{
+        if (flag_flags.count >= flag_flags.capacity) {
+                flag_flags.capacity += FLAG_LIST_GROWTH;
+                flag_flags.flags = (struct flag_opts *) realloc(
+                flag_flags.flags,
+                sizeof(*flag_flags.flags) * flag_flags.capacity);
+        }
+        flag_flags.flags[flag_flags.count++] = opts;
+}
+
+static void
+__flag_ensure_help(void)
+{
+        if (flag_flags.count > 0) return;
+        __flag_list_append((struct flag_opts) {
+        .opt = "--help",
+        .abbr = "-h",
+        .help = "Show this help",
+        });
+}
+
+static void
 flag_show_help(int fileno)
 {
         int i, j, k;
+
+        __flag_ensure_help();
 
         dprintf(fileno, "\nusage: %s", flag_prog.name);
         if (flag_flags.count == 0) goto prog_help;
@@ -218,14 +235,9 @@ prog_help:
 static void
 __flag_add(const char **var, struct flag_opts opts)
 {
-        if (flag_flags.count == MAX_FLAG_COUNT) {
-                fprintf(stderr, "Flag error: Max flag count reached!"
-                                " Change it in " __FILE__ "\n");
-                exit(3);
-        }
+        __flag_ensure_help();
         if ((opts.var = var)) *opts.var = NULL;
-        flag_flags.flags[flag_flags.count] = opts;
-        ++flag_flags.count;
+        __flag_list_append(opts);
 }
 
 static void
@@ -250,6 +262,8 @@ flag_parse(int *argc, char ***argv)
         struct flag_opts *fopt;
         int i, j;
         int has_error = 0;
+
+        __flag_ensure_help();
 
         if (!flag_prog.name || !*flag_prog.name) flag_prog.name = **argv;
 
@@ -340,6 +354,10 @@ flag_free()
                 if (!fopt->_need_free) continue;
                 free((void *) *fopt->var);
         }
+        free(flag_flags.flags);
+        flag_flags.flags = NULL;
+        flag_flags.count = 0;
+        flag_flags.capacity = 0;
 }
 
 #ifdef __cplusplus
