@@ -103,10 +103,6 @@
 #ifndef FLAG_H_
 #define FLAG_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #if _POSIX_C_SOURCE < 200809L
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -166,7 +162,7 @@ __flag_ensure_help(void)
 {
         if (flag_flags.count > 0) return;
         __flag_list_append((struct flag_opts) {
-        .opt = "--help",
+        .opt  = "--help",
         .abbr = "-h",
         .help = "Show this help",
         });
@@ -301,14 +297,14 @@ flag_parse(int *argc, char ***argv)
                                 }
                                 if ((o && (*argv)[i][strlen(fopt->opt)] == '=') ||
                                     (a && (*argv)[i][strlen(fopt->abbr)] == '=')) {
-                                        *fopt->var = strdup(strchr((*argv)[i], '=') + 1);
+                                        *fopt->var       = strdup(strchr((*argv)[i], '=') + 1);
                                         fopt->_need_free = 1;
                                 } else if (*argc <= i + 1) {
                                         fprintf(stderr, "Flag error: OOB when reading value for `%s`\n", fopt->abbr ?: fopt->opt);
                                         return 1;
                                 } else {
                                         ++i;
-                                        *fopt->var = strdup((*argv)[i]);
+                                        *fopt->var       = strdup((*argv)[i]);
                                         fopt->_need_free = 1;
                                         __flag_pop_arg(argc, argv, &i);
                                 }
@@ -355,13 +351,9 @@ flag_free()
                 free((void *) *fopt->var);
         }
         free(flag_flags.flags);
-        flag_flags.flags = NULL;
-        flag_flags.count = 0;
+        flag_flags.flags    = NULL;
+        flag_flags.count    = 0;
         flag_flags.capacity = 0;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // !FLAG_H_
