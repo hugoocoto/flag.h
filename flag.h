@@ -145,7 +145,7 @@ static struct {
 #define flag_add(var, ...) __flag_add(var, (struct flag_opts) { __VA_ARGS__ })
 #define flag_program(...) __flag_program((struct program_opts) { __VA_ARGS__ })
 
-static void
+static inline void
 __flag_list_append(struct flag_opts opts)
 {
         if (flag_flags.count >= flag_flags.capacity) {
@@ -157,7 +157,7 @@ __flag_list_append(struct flag_opts opts)
         flag_flags.flags[flag_flags.count++] = opts;
 }
 
-static void
+static inline void
 __flag_ensure_help(void)
 {
         if (flag_flags.count > 0) return;
@@ -168,7 +168,7 @@ __flag_ensure_help(void)
         });
 }
 
-static void
+static inline void
 flag_show_help(int fileno)
 {
         int i, j, k;
@@ -228,7 +228,7 @@ prog_help:
         dprintf(fileno, "\n");
 }
 
-static void
+static inline void
 __flag_add(const char **var, struct flag_opts opts)
 {
         __flag_ensure_help();
@@ -236,13 +236,13 @@ __flag_add(const char **var, struct flag_opts opts)
         __flag_list_append(opts);
 }
 
-static void
+static inline void
 __flag_program(struct program_opts opts)
 {
         flag_prog = opts;
 }
 
-static void
+static inline void
 __flag_pop_arg(int *argc, char ***argv, int *i)
 {
         if (*i + 1 < *argc) {
@@ -252,7 +252,7 @@ __flag_pop_arg(int *argc, char ***argv, int *i)
         --*argc;
 }
 
-static int
+static inline int
 flag_parse(int *argc, char ***argv)
 {
         struct flag_opts *fopt;
@@ -340,7 +340,7 @@ flag_parse(int *argc, char ***argv)
         return has_error;
 }
 
-static void
+static inline void
 flag_free()
 {
         struct flag_opts *fopt;
