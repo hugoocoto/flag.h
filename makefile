@@ -1,15 +1,15 @@
-MAJOR = 1
-MINOR = 0
-PATCH = 0
-VERSION = "$(MAJOR).$(MINOR).$(PATCH)"
+VERSION := $(shell git describe --tags --match 'v*' --always --dirty 2>/dev/null)
+ifeq ($(VERSION),)
+	VERSION := v$(shell cat VERSION 2>/dev/null || echo unknown)
+endif
 
-all: test
+all: example
 
-test: test.c flag.h
-	gcc ./test.c -std=c99 -o test -ggdb -Wall -Wextra
+example: example.c flag.h
+	gcc ./example.c -std=c99 -o example -ggdb -Wall -Wextra -pedantic
 
 clean:
-	rm -f test flag.h-*.zip
+	rm -f example flag.h-*.zip
 
 package: flag.h
 	rm -f flag.h-*.zip
