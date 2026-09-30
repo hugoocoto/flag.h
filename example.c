@@ -1,13 +1,3 @@
-## flag.h
-
-Single-header command line flag parser for C99, inspired by Python's argparse.
-
-Copy [flag.h](./flag.h) into your project, `#include "flag.h"`, done. Nothing to
-build or link. Needs a POSIX system.
-
-### Example
-
-```c
 #include "flag.h"
 
 int
@@ -31,28 +21,3 @@ main(int argc, char **argv)
         flag_free();
         return 0;
 }
-```
-
-```
-$ ./prog -h
-
-usage: ./prog [-h] [-o O] [-v] INPUT
-
-Copy INPUT to OUTPUT
-
-options:
- --help, -h      Show this help
- --output, -o O  where to write (default: out.txt)
- --verbose, -v   print what is going on
-
-$ ./prog -v in.txt -o x.txt
-copying in.txt to x.txt
-```
-
-### Documentation
-
-The full API is documented at the top of [flag.h](./flag.h).
-
-### Contributing
-
-Check [CONTRIBUTING.md](./CONTRIBUTING.md)

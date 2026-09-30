@@ -1,103 +1,91 @@
-/* * Copyright (c) 2026 Hugo Coto Florez
+/* flag.h - single-header command line flag parser for C99
+ *
+ * Install: copy this file into your project and #include "flag.h".
+ * Nothing to build or link. Needs a POSIX system.
+ *
+ *
+ * Copyright (c) 2026 Hugo Coto Florez
  *
  * This work is licensed under the Creative Commons Attribution 4.0
  * International License. To view a copy of this license, visit
  * http://creativecommons.org/licenses/by/4.0/
  *
  * SPDX-License-Identifier: CC-BY-4.0
- */
+ *
+----------------------------------- template -----------------------------------
 
-/* +---------------------------------------------------+
- * | Github: https://github.com/hugoocoto/flag.h       |
- * +---------------------------------------------------+
- * | Contributors:                                     |
- * | Hugo Coto Florez                                  |
- * +---------------------------------------------------+
- * */
+#include "flag.h"
 
-/* Quick start / notes:
- *
- * 1. #include "flag.h"
- *
- * 2. flag_program([args]) -- optional
- *      args: zero or more of
- *      .name="", .help="", .positionals=flag_list("",""),
- *
- * 3. flag_add(char** var, [args]) -- one per flag
- *      var: address of a char pointer that is going to store the flag value
- *      args: zero or more of
- *      .opt="",  .abbr="", .help="", .nargs=0/1, .defaults="", .required=0/1,
- *
- * 4. if (flag_parse(&argc, &argv)) { flag_show_help(STDOUT_FILENO); exit(1); }
- * 5. flag_free()
- *
- * argc and argv are modified, the flags and their values are deleted. So the
- * final argc is 1 (program name) + non-flag count.
- *
- * for the flag -f that expects a parameter, you can use either -f 1 or -f=1.
- *
- * The values are (char*)1 or (char*)0 for boolean flags; and a heap-allocated
- * copy of the argument if the flags expects an arg, or NULL if not set. The
- * pointers are set to 0/NULL by default, you don't have to care about this.
- *
- * This library api uses optional-like function params. You have to specify it
- * as a struct field (.name=value,).
- *
- * Check the example.
- */
+int
+main(int argc, char **argv)
+{
+        const char *output;  // flag with a value: -o file
+        const char *verbose; // boolean flag: -v
 
-/* Example:
+        flag_program(.help = "Copy INPUT to OUTPUT", .positionals = flag_list("INPUT"));
+        flag_add(&output, "--output", "-o", .nargs = 1, .defaults = "out.txt", .help = "where to write");
+        flag_add(&verbose, "--verbose", "-v", .help = "print what is going on");
+
+        if (flag_parse(&argc, &argv)) {
+                flag_show_help(STDERR_FILENO);
+                return 1;
+        }
+
+        // Flags are removed from argv: argv[1] is now INPUT
+        if (verbose) printf("copying %s to %s\n", argv[1], output);
+
+        flag_free();
+        return 0;
+}
+
+ * $ ./prog -h
  *
- * #include "flag.h"
+ * usage: ./prog [-h] [-o O] [-v] INPUT
  *
- * int
- * main(int argc, char **argv)
- * {
- *         char *b;
- *         char *foo;
- *
- *         // Optional. Set program info.
- *         flag_program(.help = "flag.h by Hugo Coto", .positionals = flag_list("pos1", "pos2"));
- *
- *         // Register flags. The first argument is a pointer that should be set to
- *         // the constant string with the argument. If the flag is not set, it
- *         // would be set to NULL. See flag_opts
- *         flag_add(&foo, "--foo", "-f", .defaults = "nothing", .help = "foo flag", .nargs = 1);
- *         flag_add(&b, "--b", .required = 1, .help = "required flag");
- *
- *         // Check if all the required flags are set. Check if argc is at least
- *         // the same as the number of positionals. Return 0 if succeed.
- *         if (flag_parse(&argc, &argv)) {
- *                 // Print help. The flags --help, -h and -help are set by default
- *                 flag_show_help(STDOUT_FILENO);
- *                 exit(1);
- *         }
- *
- *         printf("foo = %s\n", foo);
- *
- *         flag_free();
- *
- *         return 0;
- * }
- *
- * Note: This example is the same as in ./test.c, if for some reason I forgot to
- * update it here, you can check it there.
- *
- * Output of the previous program with no args
- *
- * ./flag
- * Flag error: Required flag --b not set!
- * Flag error: Positional argument pos1 not provided!
- * Flag error: Positional argument pos2 not provided!
- *
- * usage: ./flag [-h] [-f F] --b pos1 pos2
- *
- * flag.h by Hugo Coto
+ * Copy INPUT to OUTPUT
  *
  * options:
- *  --help, -h     Show this help
- *  --foo, -f F    foo flag (default: nothing)
- *  --b    required flag
+ *  --help, -h      Show this help
+ *  --output, -o O  where to write (default: out.txt)
+ *  --verbose, -v   print what is going on
+ *
+ * $ ./prog -v in.txt -o x.txt
+ * copying in.txt to x.txt
+
+------------------------------------- API --------------------------------------
+
+ * Optional arguments are passed by name: flag_add(&v, "--foo", .nargs = 1).
+ *
+ * flag_program(...)                        Optional. Describes the program.
+ *     .help        = "..."                 Text shown under the usage line.
+ *     .positionals = flag_list("A", "B")   Required positional arguments.
+ *     .name        = "..."                 Name in the usage line (default argv[0]).
+ *
+ * flag_add(&var, "--long", "-s", ...)      Register a flag (var is a const char *).
+ *     .nargs    = 0 (default)              Boolean. var is non-NULL if given, else NULL.
+ *     .nargs    = 1                        Takes a value (-s val, -s=val). var points to it.
+ *     .defaults = "..."                    Value of var when the flag is not given.
+ *     .required = 1                        Error if the flag is not given.
+ *     .help     = "..."                    Text shown in the help.
+ *
+ * flag_parse(&argc, &argv)                 Parse the command line. Returns 0 on success,
+ *                                          or non-zero after printing errors to stderr.
+ *                                          Flags and their values are removed from argv,
+ *                                          so argv[1..argc-1] are the positionals.
+ *                                          -h, -help and --help print help and exit(0).
+ *
+ * flag_show_help(fd)                       Print usage and options to fd
+ *                                          (STDOUT_FILENO or STDERR_FILENO).
+ *
+ * flag_free()                              Free the parsed values. Don't use the flag
+ *                                          variables after calling it.
+ *
+ * Notes:
+ * - Flags can go anywhere on the command line, before or after positionals.
+ * - A flag takes at most one value (nargs > 1 is not supported).
+ * - Positionals are a minimum: extra arguments are left in argv.
+ * - If a flag is repeated, only the first one is used; the rest stay in argv.
+ * - Short flags can't be combined: use -a -b, not -ab.
  */
 
 #ifndef FLAG_H_
@@ -113,9 +101,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define flag_list(x, ...) (const char *[]){ x, ##__VA_ARGS__, 0 }
-
-/* Flag list grows by this amount each time it runs out of space. */
 #define FLAG_LIST_GROWTH 3
 
 struct flag_opts {
@@ -142,6 +127,7 @@ static struct {
         struct flag_opts *flags;
 } flag_flags = { 0 };
 
+#define flag_list(...) (const char *[]){ __VA_ARGS__, 0 }
 #define flag_add(var, ...) __flag_add(var, (struct flag_opts) { __VA_ARGS__ })
 #define flag_program(...) __flag_program((struct program_opts) { __VA_ARGS__ })
 
@@ -168,10 +154,19 @@ __flag_ensure_help(void)
         });
 }
 
+static inline int
+__flag_opt_width(struct flag_opts *f)
+{
+        int w = 2 * f->nargs; // " X" per arg
+        if (f->opt) w += strlen(f->opt);
+        if (f->abbr) w += strlen(f->abbr) + 2; // ", "
+        return w;
+}
+
 static inline void
 flag_show_help(int fileno)
 {
-        int i, j, k;
+        int i, j, k, w, width = 0;
 
         __flag_ensure_help();
 
@@ -180,17 +175,19 @@ flag_show_help(int fileno)
 
         for (i = 0; i < flag_flags.count; i++) {
                 dprintf(fileno, flag_flags.flags[i].required ? " " : " [");
-                if (flag_flags.flags[i].abbr)
+                if (flag_flags.flags[i].abbr) {
                         dprintf(fileno, "%s", flag_flags.flags[i].abbr);
-                else
+                } else {
                         dprintf(fileno, "%s", flag_flags.flags[i].opt);
-                for (j = 0; j < flag_flags.flags[i].nargs; j++)
+                }
+                for (j = 0; j < flag_flags.flags[i].nargs; j++) {
                         for (k = 0; flag_flags.flags[i].opt[k]; k++) {
                                 if (isalpha(flag_flags.flags[i].opt[k])) {
                                         dprintf(fileno, " %c", toupper(flag_flags.flags[i].opt[k]));
                                         break;
                                 }
                         }
+                }
                 dprintf(fileno, flag_flags.flags[i].required ? "" : "]");
         }
 
@@ -204,25 +201,26 @@ prog_help:
         if (flag_prog.help) dprintf(fileno, "%s\n\n", flag_prog.help);
         if (flag_flags.count == 0) return;
 
+        for (i = 0; i < flag_flags.count; i++) {
+                if ((w = __flag_opt_width(&flag_flags.flags[i])) > width) width = w;
+        }
+
         dprintf(fileno, "options:\n");
         for (i = 0; i < flag_flags.count; i++) {
                 dprintf(fileno, " ");
-                if (flag_flags.flags[i].opt)
-                        dprintf(fileno, "%s", flag_flags.flags[i].opt);
-                if (flag_flags.flags[i].abbr)
-                        dprintf(fileno, ", %s", flag_flags.flags[i].abbr);
-                for (j = 0; j < flag_flags.flags[i].nargs; j++)
+                if (flag_flags.flags[i].opt) dprintf(fileno, "%s", flag_flags.flags[i].opt);
+                if (flag_flags.flags[i].abbr) dprintf(fileno, ", %s", flag_flags.flags[i].abbr);
+                for (j = 0; j < flag_flags.flags[i].nargs; j++) {
                         for (k = 0; flag_flags.flags[i].opt[k]; k++) {
                                 if (isalpha(flag_flags.flags[i].opt[k])) {
                                         dprintf(fileno, " %c", toupper(flag_flags.flags[i].opt[k]));
                                         break;
                                 }
                         }
-                dprintf(fileno, " \t");
-                if (flag_flags.flags[i].help)
-                        dprintf(fileno, "%s", flag_flags.flags[i].help);
-                if (flag_flags.flags[i].defaults)
-                        dprintf(fileno, " (default: %s)", flag_flags.flags[i].defaults);
+                }
+                dprintf(fileno, "%*s", width - __flag_opt_width(&flag_flags.flags[i]) + 2, "");
+                if (flag_flags.flags[i].help) dprintf(fileno, "%s", flag_flags.flags[i].help);
+                if (flag_flags.flags[i].defaults) dprintf(fileno, " (default: %s)", flag_flags.flags[i].defaults);
                 dprintf(fileno, "\n");
         }
         dprintf(fileno, "\n");
@@ -300,7 +298,7 @@ flag_parse(int *argc, char ***argv)
                                         *fopt->var       = strdup(strchr((*argv)[i], '=') + 1);
                                         fopt->_need_free = 1;
                                 } else if (*argc <= i + 1) {
-                                        fprintf(stderr, "Flag error: OOB when reading value for `%s`\n", fopt->abbr ?: fopt->opt);
+                                        fprintf(stderr, "Flag error: OOB when reading value for `%s`\n", fopt->abbr ? fopt->abbr : fopt->opt);
                                         return 1;
                                 } else {
                                         ++i;
@@ -321,9 +319,8 @@ flag_parse(int *argc, char ***argv)
                 if (fopt->defaults) *fopt->var = fopt->defaults;
                 if (fopt->required && *fopt->var == NULL) {
                         fprintf(stderr, "Flag error: Required flag %s not set!\n",
-                                fopt->opt  ?:
-                                fopt->abbr ?:
-                                             "??");
+                                fopt->opt ? fopt->opt : fopt->abbr ? fopt->abbr :
+                                                                     "??");
                         has_error = 1;
                 }
         }

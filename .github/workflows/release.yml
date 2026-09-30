@@ -1,0 +1,58 @@
+name: Release
+
+# Every push to main updates the "nightly" release, and a v* tag makes a
+# release of its own. Each has flag.h, the zip from `make package` and the
+# checksums of both.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  release:
+    # Never stopped halfway: nightly is deleted and made again
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe needs the tags, for the version
+
+      - name: Build
+        run: make example
+
+      - name: Package
+        run: |
+          mkdir dist
+          make package
+          mv flag.h-*.zip dist/
+          cp flag.h dist/
+          cd dist && sha256sum * >SHA256SUMS
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+              --title "flag.h $GITHUB_REF_NAME" --generate-notes
+            exit
+          fi
+          # Its tag moved here, and the release made again, so it has this
+          # build's date (an edited release keeps the date it was first
+          # published).
+          version=$(git describe --tags --match 'v*' --always)
+          notes="$version, built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC'). It changes with every push to main."
+          git tag -f nightly "$GITHUB_SHA"
+          git push -f origin nightly
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes # keeps the tag
+          fi
+          gh release create nightly dist/* --repo "$GITHUB_REPOSITORY" --prerelease --verify-tag \
+            --title "Nightly" --notes "$notes"
