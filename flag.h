@@ -102,6 +102,8 @@ main(int argc, char **argv)
 #ifndef FLAG_H_
 #define FLAG_H_
 
+#define FLAG_H_VERSION "1.3.0"
+
 #if _POSIX_C_SOURCE < 200809L
 #define _POSIX_C_SOURCE 200809L
 #endif

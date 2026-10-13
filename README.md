@@ -55,7 +55,3 @@ $ source <(./prog --completions bash)
 ### Documentation
 
 The full API is documented at the top of [flag.h](./flag.h).
-
-### Contributing
-
-Check [CONTRIBUTING.md](./CONTRIBUTING.md)

@@ -1,7 +1,4 @@
-VERSION := $(shell git describe --tags --match 'v*' --always --dirty 2>/dev/null)
-ifeq ($(VERSION),)
-	VERSION := v$(shell cat VERSION 2>/dev/null || echo unknown)
-endif
+VERSION := $(shell sed -n 's/^#define FLAG_H_VERSION "\(.*\)"/\1/p' flag.h)
 
 all: example
 
