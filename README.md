@@ -36,17 +36,20 @@ main(int argc, char **argv)
 ```
 $ ./prog -h
 
-usage: ./prog [-h] [-o O] [-v] INPUT
+usage: ./prog [-h] [--completions C] [-o O] [-v] INPUT
 
 Copy INPUT to OUTPUT
 
 options:
- --help, -h      Show this help
- --output, -o O  where to write (default: out.txt)
- --verbose, -v   print what is going on
+ --help, -h       Show this help
+ --completions C  Print completions for bash, zsh or fish
+ --output, -o O   where to write (default: out.txt)
+ --verbose, -v    print what is going on
 
 $ ./prog -v in.txt -o x.txt
 copying in.txt to x.txt
+
+$ source <(./prog --completions bash)
 ```
 
 ### Documentation
